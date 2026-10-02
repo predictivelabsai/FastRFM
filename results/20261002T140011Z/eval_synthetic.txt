@@ -1,0 +1,21 @@
+FastRFM  source=synthetic  context_size=64
+anchors: train=2023-12-27T00:00:00, val=2024-03-26T00:00:00, test=2024-06-24T00:00:00
+
+task               metric        n       flat        rfm       kumo
+------------------------------------------------------------------
+churn              auroc       400      0.515      0.920      0.879
+  positive rate 0.37
+ltv                mae         400    199.739    136.655    136.333
+notify             hit@1       252      0.615      0.829      0.647
+fraud              auroc      1260      0.526      0.941      0.585
+  positive rate 0.15 · kumo scored 164/1260
+
+churn  entity 72  anchor 2024-06-24T00:00:00
+  Last order 8 days ago, 7 orders and $224 in the past year. Flat, which only sees those three numbers, says P(churn)=0.07. There are 3 severe account tickets in the last 21 days (severity sum 15) and a 40% refund rate over 60 days. The relational model says P(churn)=0.58. They placed no order in the next 90 days.
+
+fraud  entity 9226  anchor 2024-08-02T12:00:00
+  payment 9226: flat P(fraud)=0.42 from the customer's own history, rfm P(fraud)=0.86 after looking at other payments on the same device. The payment was fraud.
+
+flat fits a linear model on recency, frequency, and monetary value. rfm retrieves labeled neighborhoods and does not fit task weights. kumo is hosted NVIDIA Kumo Relational (ex-KumoRFM) and runs only when KUMO_API_KEY is set.
+wrote results/20261002T140011Z/eval_synthetic.json
+synthetic eval wall 228s

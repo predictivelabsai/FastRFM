@@ -72,3 +72,13 @@ def test_predict_task_uses_the_injected_client(monkeypatch):
     assert raw["calls"] == 1
     assert raw["n_scored"] == len(examples)
     assert np.allclose(raw["scores"], 0.25)
+
+
+def test_catalog_client_uses_bearer_and_catalog_paths():
+    from fastrfm import nvidia
+
+    client = nvidia.catalog_client("nvapi-test-not-a-real-key")
+    assert client._session.headers["Authorization"] == "Bearer nvapi-test-not-a-real-key"
+    assert "X-API-Key" not in client._session.headers
+    assert client._format_endpoint_url("/v1/predictions") == nvidia.CATALOG_URL + "/predictions"
+    assert nvidia.redact("x nvapi-test-not-a-real-key y", "nvapi-test-not-a-real-key") == "x <redacted> y"

@@ -1,8 +1,8 @@
 # FastRFM
 
-Score one relational question three ways from the command line: a flattened recency/frequency/monetary model (`flat`), a local in-context model (`rfm`), and hosted KumoRFM (`kumo`).
+Score one relational question three ways from the command line: a flattened recency/frequency/monetary model (`flat`), a local in-context model (`rfm`), and hosted NVIDIA Kumo Relational, formerly KumoRFM (`kumo`).
 
-`flat` and `rfm` run on this machine. They need no account. The `kumo` column calls Kumo's hosted model, and only that column needs an API key.
+`flat` and `rfm` run on this machine. They need no account. The `kumo` column calls NVIDIA's hosted Kumo Relational model, and only that column needs an API key (`KUMO_API_KEY=nvapi-...` in `.env`, see below).
 
 ## Install
 
@@ -36,7 +36,7 @@ ltv                mae         400    199.739    146.225  needs key
 notify             hit@1       252      0.615      0.829  needs key
 ```
 
-Lower MAE is better. `needs key` means `KUMO_API_KEY` is unset. The other two columns do not contact a network, and the command still exits 0.
+Lower MAE is better. `needs key` means `KUMO_API_KEY` is unset. With a key, see [Real results](#real-results-2-october-2026-hosted-nvidiakumo-relational). The other two columns do not contact a network, and the command still exits 0.
 
 One customer the local models disagree on:
 
@@ -63,63 +63,94 @@ uv run pytest
 
 `rfm` retrieves `--context-size` labeled rows (default 64) and averages `--k` neighbors (default 31). `flat` is fit on the whole training split.
 
-## Get a Kumo API key
+## Hosted model: NVIDIA Kumo Relational (formerly KumoRFM)
 
-Check what this environment can see. The command prints `set` or `missing`. It does not print the key.
+KumoRFM moved under NVIDIA in 2026. kumorfm.ai no longer issues keys, and its old API (`https://kumorfm.ai/api`) now redirects to the [NVIDIA docs](https://docs.nvidia.com/sdgm/rfm/overview). The same model is now `nvidia/kumo-relational` on the NVIDIA API Catalog.
 
-```bash
-uv run fastrfm keys
-```
+### Get a key
 
-Install the SDK, put the key in the environment, and score one task. Churn, lifetime value, and the restaurant question are one hosted call each. Fraud and the Formula 1 tasks batch by day, up to `--kumo-max-calls` (default 8). Start with a single call: the SDK uploads the tables.
-
-```bash
-uv sync --extra kumo
-export KUMO_API_KEY="paste-the-key-here"
-uv run fastrfm eval --tasks churn --kumo-max-calls 1
-```
-
-pip equivalent: `pip install 'fastrfm[kumo]'`, which installs `kumoai`.
-
-Leave the key out of the repo, out of notebooks you commit, and out of shell history if you can avoid it. Setting the variable for one command works:
+1. Sign in at <https://build.nvidia.com/nvidia/kumo-relational> (a free NVIDIA developer account is enough).
+2. Click **Get API Key**. The key starts with `nvapi-`.
+3. Put it in `.env` at the repo root. `.env` is gitignored, and `.env.example` shows the format:
 
 ```bash
-KUMO_API_KEY="paste-the-key-here" uv run fastrfm eval --tasks churn --kumo-max-calls 1
+cp .env.example .env      # then edit KUMO_API_KEY=nvapi-...
+uv run fastrfm keys       # prints "set" or "missing" and the backend. Never prints the key.
 ```
 
-What the call does. `fastrfm` imports `kumoai` and calls `rfm.init()`, which reads `KUMO_API_KEY`. The graph is cut to rows before the anchor, so the latest timestamp Kumo sees is the evaluation cutoff. The question goes as a Predictive Query, for example:
+`fastrfm` loads `.env` itself through python-dotenv. A real environment variable takes precedence. `NVIDIA_API_KEY` works too.
 
-```text
-PREDICT COUNT(orders.*, 0, 90, days)=0 FOR EACH customers.customer_id
+### How the call works
+
+| | |
+| --- | --- |
+| Endpoint | `POST https://ai.api.nvidia.com/v1/structured-data/nvidia/kumo-relational/predictions` |
+| Auth | `Authorization: Bearer $KUMO_API_KEY` |
+| Request | Universal Structured Data request: task, schema, in-context labeled subgraphs, and the rows to predict |
+| Client | `fastrfm.nvidia.KumoRelational(tables).predict(pql)` |
+
+NVIDIA's `kumo-relational-client` / `kumo-relational-engine` 1.0.2 does the hard part. It takes a dict of DataFrames and a PQL query, then samples per-entity subgraphs and in-context examples and builds the request JSON. Its HTTP layer, though, targets a self-hosted NIM: it sends `X-API-Key` to `<url>/v1/predictions`. `fastrfm/nvidia.py` subclasses its `NimClient` to send `Authorization: Bearer` to `<catalog>/predictions` instead. Nothing else about the request changes. Sessions are disabled because the catalog is stateless, and `batch_mode("max")` splits large entity lists, for example 200 per call for ranking.
+
+```python
+from fastrfm.nvidia import KumoRelational
+model = KumoRelational({"customers": customers, "orders": orders})   # pandas frames
+pred = model.predict("PREDICT COUNT(orders.*, 0, 90, days)=0 FOR EACH customers.customer_id",
+                     indices=[1, 2, 3], anchor_time=pd.Timestamp("2024-06-24"))
+pred.frame      # ENTITY, ANCHOR_TIMESTAMP, PREDICTION, FALSE_PROB, TRUE_PROB
+pred.seconds    # wall-clock latency of the hosted call(s)
 ```
 
-The weights stay on Kumo's side. They are not downloaded.
+The legacy `kumoai` SDK (`rfm.init(api_key=...)`, 2.22.0) does not work with an NVIDIA key. Its default host `kumorfm.ai/api` returns the NVIDIA docs HTML, and `init` fails with `JSONDecodeError`. `fastrfm` still falls back to `kumoai` for a key that does not start with `nvapi-`, in case you run your own Kumo host (`RFM_API_URL`).
 
-### Where the key comes from
-
-`kumoai` 2.22, the SDK this extra installs, creates a KumoRFM key at <https://kumorfm.ai/api-keys>. Its own login helper opens <https://kumorfm.ai/authenticate-sdk/> and writes `KUMO_API_KEY` for you. The allowance published with that product was 1,000 queries a day.
-
-On 2 October 2026 those URLs, including `https://kumorfm.ai/api`, redirect to the [NVIDIA Kumo Relational docs](https://docs.nvidia.com/sdgm/rfm/overview). There is no signup form on that page. A key you already hold only works if you also point the SDK at a host that still answers:
+### Run it
 
 ```bash
-export KUMO_API_KEY="paste-the-key-here"
-export RFM_API_URL="https://your-kumo-host/api"
-uv run fastrfm eval --tasks churn --kumo-max-calls 1
+uv sync                                   # or: pip install -r requirements.txt && pip install -e .
+uv run python scripts/kumo_demo.py        # 4 PQL tasks, writes results/<UTC timestamp>/
+uv run fastrfm eval --kumo-max-calls 8    # flat vs rfm vs kumo on the synthetic warehouse
+uv run fastrfm eval --source rel-f1 --kumo-max-calls 40   # RelBench F1, every test anchor
 ```
 
-`RFM_API_URL` defaults to `https://kumorfm.ai/api`. That is the variable `rfm.init()` reads. `KUMO_API_ENDPOINT` is a different setting, used by the training SDK when no URL is passed, and this CLI does not pass it through.
+## Real results (2 October 2026, hosted `nvidia/kumo-relational`)
 
-If your organization runs Kumo Studio, the Studio key is created there:
+These are real predictions from the hosted NVIDIA API Catalog model with the free developer key. Raw outputs, per-entity CSVs, and JSON reports are in [`results/20261002T140011Z/`](results/20261002T140011Z/). Each graph was cut at the anchor, so the model saw no rows after it. Labels come from the rows after the anchor and are used only for scoring.
 
-1. Open **API Keys**, or go to `https://<your-kumo-platform-dns>/api-keys`.
-2. Choose **Create API key**, give it a name, and copy the value. Studio shows the full key only at creation. It has the shape `customer_id:secret`.
-3. The steps are written up in [API Key Management](https://docs.nvidia.com/sdgm/fine-tuning/api-key-management).
+### `scripts/kumo_demo.py` on the synthetic warehouse (400 customers, anchor 2024-06-24)
 
-That key authenticates Kumo Predict (`kumoai.init` against your studio). `fastrfm` sends `KUMO_API_KEY` to the RFM predict endpoint in `RFM_API_URL`. Set `RFM_API_URL` to a host that serves KumoRFM predict.
+| Task | PQL | n | Result | Latency |
+| --- | --- | ---: | --- | ---: |
+| Churn (binary) | `PREDICT COUNT(orders.*, 0, 90, days)=0 FOR EACH customers.customer_id` | 400 | **AUROC 0.879** (37% positive) | 15.4 s |
+| 180-day spend (regression) | `PREDICT SUM(orders.net_amount, 0, 180, days) FOR EACH customers.customer_id` | 400 | **MAE 136.3**, against 144.3 for a constant guess. Mean predicted 261.0, mean actual 282.5 | 40.8 s |
+| Next restaurant (ranking) | `PREDICT LIST_DISTINCT(orders.restaurant_id, 0, 30, days) RANK TOP 1 FOR EACH ...` | 252 | **hit@1 0.647** | 30.2 s (2 batches) |
+| Spend forecast | `PREDICT SUM(orders.net_amount, 0, 30, days) FORECAST 3 TIMEFRAMES FOR customers.customer_id=<id>` | 5 x 3 | **MAE 27.6** per 30-day window (mean actual 73.3) | 2.1 s per customer |
 
-NVIDIA's current Kumo Relational product is a NIM plus the package `kumo-relational-client`. Its connect guide is [Deploy, Install, and Connect](https://docs.nvidia.com/sdgm/rfm/sdk-getting-started). A gateway key for that client is `KUMO_RELATIONAL_API_KEY`. `fastrfm` does not import that package, so a NIM key leaves the `kumo` column as `needs key`.
+Latency is wall clock from this machine and includes sampling the subgraphs locally. The same churn call took 15 s on one run and 41 s on another, so expect variance on the free tier.
 
-If the key is missing, or `kumoai` is not installed, eval prints the reason once and still scores `flat` and `rfm`.
+### `fastrfm eval`: flat vs local rfm vs hosted Kumo Relational
+
+Synthetic warehouse, test split:
+
+| Task | Metric | n | flat | rfm | kumo |
+| --- | --- | ---: | ---: | ---: | ---: |
+| churn | AUROC | 400 | 0.515 | 0.920 | **0.879** |
+| ltv | MAE | 400 | 199.7 | 136.7 | **136.3** |
+| notify | hit@1 | 252 | 0.615 | 0.829 | **0.647** |
+| fraud | AUROC | 1260 (kumo: 164 over 8 days) | 0.526 | 0.941 | **0.585** |
+
+RelBench `rel-f1`, test split. Kumo scored every test row, with one call per anchor date (29–33 calls per task, 9 min total):
+
+| Task | Metric | n | flat | rfm | kumo |
+| --- | --- | ---: | ---: | ---: | ---: |
+| driver-dnf | AUROC | 702 | 0.819 | 0.822 | **0.824** |
+| driver-top3 | AUROC | 726 | 0.907 | 0.907 | **0.916** |
+| driver-position | MAE | 760 | 4.039 | 3.000 | **2.683** |
+
+What this shows:
+
+- On real data (rel-f1), Kumo Relational is the best of the three on all three tasks with no training. The biggest gain is finishing position: MAE 2.68, against 3.00 for local rfm and 4.04 for flat.
+- On the synthetic warehouse, the hand-built `rfm` features beat Kumo. That is expected, because the generator plants its signal in exactly the joins `features.py` aggregates. Kumo still clearly beats the RFM-only `flat` baseline on churn and ltv.
+- Fraud is the weak spot. The signal sits two hops away (payment → shared device → other payments' labels), and only 164 test payments were scored, so 0.585 is a noisy estimate.
+- The F1 queries draw harmless "semantic type" warnings, for example `results.statusId` inferred as an ID. Setting stypes explicitly on the graph would remove them.
 
 ## The three models
 
@@ -127,7 +158,7 @@ If the key is missing, or `kumoai` is not installed, eval prints the reason once
 | --- | --- | --- |
 | `flat` | Logistic or ridge regression on recency, frequency, and monetary value. Every training label. No joins. | None |
 | `rfm` | Retrieves a few labeled neighborhoods and predicts in one pass. No task weights. | None |
-| `kumo` | Hosted [KumoRFM](https://docs.nvidia.com/sdgm/rfm/overview) through `kumoai`. | `KUMO_API_KEY` |
+| `kumo` | Hosted [NVIDIA Kumo Relational](https://build.nvidia.com/nvidia/kumo-relational) (ex-KumoRFM) through `fastrfm/nvidia.py`. | `KUMO_API_KEY` (NVIDIA `nvapi-` key) |
 
 `rfm` has the shape of a relational foundation model: database in, question in, a handful of labeled subgraphs, an answer. The aggregates it retrieves over are written in `features.py`, so you can see which join moved the score. KumoRFM learns which aggregates to compute. [OpenRFM](https://arxiv.org/abs/2606.04320) and [RDB-PFN](https://github.com/MuLabPKU/RDBPFN) publish training recipes. This CLI does not call them.
 
@@ -177,11 +208,15 @@ src/fastrfm/
   tasks.py        # forward labels, cutoff at the anchor
   features.py     # aggregates with a strict ts < anchor cutoff
   models.py       # logistic / ridge, and neighborhood retrieval
-  kumo.py         # hosted KumoRFM, skipped without a key
+  kumo.py         # PQL per task, cutoff, scoring; skipped without a key
+  nvidia.py       # NVIDIA API Catalog client (Bearer auth) over kumo-relational-engine
   relbench.py     # fetch and score rel-f1
   evaluate.py
   report.py
 tests/
+scripts/kumo_demo.py  # real hosted predictions -> results/<timestamp>/
+results/              # committed outputs of real runs
+.env.example          # KUMO_API_KEY=nvapi-...
 ```
 
 ## License

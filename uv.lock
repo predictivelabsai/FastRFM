@@ -163,6 +163,15 @@ wheels = [
 ]
 
 [[package]]
+name = "antlr4-python3-runtime"
+version = "4.13.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/5f/2cdf6f7aca3b20d3f316e9f505292e1f256a32089bd702034c29ebde6242/antlr4_python3_runtime-4.13.2.tar.gz", hash = "sha256:909b647e1d2fc2b70180ac586df3933e38919c85f98ccc656a96cd3f25ef3916", size = 117467, upload-time = "2024-08-03T19:00:12.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/03/a851e84fcbb85214dc637b6378121ef9a0dd61b4c65264675d8a5c9b1ae7/antlr4_python3_runtime-4.13.2-py3-none-any.whl", hash = "sha256:fe3835eb8d33daece0e799090eda89719dbccee7aa39ef94eed3818cafa5a7e8", size = 144462, upload-time = "2024-08-03T19:00:11.134Z" },
+]
+
+[[package]]
 name = "attrs"
 version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -341,10 +350,13 @@ name = "fastrfm"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "kumo-relational-client", extra = ["relational"] },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
     { name = "pyarrow" },
+    { name = "python-dotenv" },
+    { name = "requests" },
 ]
 
 [package.optional-dependencies]
@@ -357,11 +369,14 @@ kumo = [
 
 [package.metadata]
 requires-dist = [
+    { name = "kumo-relational-client", extras = ["relational"], specifier = ">=1.0.2" },
     { name = "kumoai", marker = "extra == 'kumo'", specifier = ">=2.0" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pandas", specifier = ">=2.1" },
     { name = "pyarrow", specifier = ">=14" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "python-dotenv", specifier = ">=1.2.4" },
+    { name = "requests", specifier = ">=2.34.2" },
 ]
 provides-extras = ["kumo", "dev"]
 
@@ -513,6 +528,78 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/25/a5/452b2ee152b569c631127ab484ed6af9482d160c21691d5ef9ac9b8e2a5b/kumo_api-0.92.0-py3-none-any.whl", hash = "sha256:f5abcf0df6fa8fd22897004a9a19c123e101705a0d4c09451e8376e76026acc8", size = 94736, upload-time = "2026-06-16T22:00:22.222Z" },
+]
+
+[[package]]
+name = "kumo-connectors"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pandas" },
+    { name = "pyarrow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d4/9d/c1a6eecc768eca8b60b78fa6b2cd8b895bb3748a30c18de2d146959f3b1a/kumo_connectors-1.0.2.tar.gz", hash = "sha256:def6f39f55126472d4ddc097c1170977269c2a5380aa08c714c431065fb37bad", size = 38400, upload-time = "2026-09-23T16:18:27.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/b3/39d3d84291e2a195caef5a1a25e29e83b138618cf48f6093a1fe2e172b91/kumo_connectors-1.0.2-py3-none-any.whl", hash = "sha256:0ba8c9cdcf9d6a459ddbc6fe854c1f5b77a877a5faf41d321990503f7fb602de", size = 31653, upload-time = "2026-09-23T16:18:26.21Z" },
+]
+
+[[package]]
+name = "kumo-relational-client"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "kumo-connectors" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pandas" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6b/b5/d17cfee7a4879cff71ec266f3c16deda118d7eff44651a6bd53c64b28a57/kumo_relational_client-1.0.2.tar.gz", hash = "sha256:cd948d322c7591407f27846a533ce5e8c425f7b64697ee7f9a813f6068a2f328", size = 71081, upload-time = "2026-09-23T16:55:07.353Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/50/f9696cd7eee6f278baeea06acc006c06c99b82d2623445ea9ec98ce1b9aa/kumo_relational_client-1.0.2-py3-none-any.whl", hash = "sha256:dbad6150383b2065848e59b2b492b916876ad2002f9162e9acd35704126ae883", size = 47180, upload-time = "2026-09-23T16:55:05.948Z" },
+]
+
+[package.optional-dependencies]
+relational = [
+    { name = "kumo-relational-engine" },
+]
+
+[[package]]
+name = "kumo-relational-engine"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "antlr4-python3-runtime" },
+    { name = "jinja2" },
+    { name = "kumo-connectors" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+    { name = "python-dateutil" },
+    { name = "requests" },
+    { name = "rich" },
+    { name = "tabulate" },
+    { name = "typing-extensions" },
+    { name = "urllib3" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e2/1e/1249ec8d2238d9b9f48c9de8dad458e29a8586fcc73d84590bcc656a720c/kumo_relational_engine-1.0.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:318e4008e7c9975f1d0481361490ee4c3650d26fb21626b0d52d1619bf593693", size = 1374730, upload-time = "2026-09-23T16:28:17.975Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/22/6b185280ebf518e8b14e77a58446d04a4204366b4e729cdbc883fab5c53b/kumo_relational_engine-1.0.2-cp311-cp311-macosx_11_0_x86_64.whl", hash = "sha256:e181a7f8fe5669d9d06a3ceb9f14ac1e4c716d94d4834fa53a1a92c4bc7ef245", size = 1382694, upload-time = "2026-09-23T16:28:19.5Z" },
+    { url = "https://files.pythonhosted.org/packages/75/d8/9e6c8c198a01b91b5c708c28825e9b213931526d20dd017ca40b60f8a3c3/kumo_relational_engine-1.0.2-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b07a1eab5caddc35b1346421f856cdbfea9bc7964788ce90df2f78c3965f8154", size = 1384382, upload-time = "2026-09-23T16:28:21.177Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/fc/7bdb7a7000986912a45773cf287b067b8945400d9d974dc0d3362531383c/kumo_relational_engine-1.0.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5ab7b6cbe96b741b347753e0b555f3e120068b32be5004e2adddc1ce93941818", size = 1399813, upload-time = "2026-09-23T16:28:23.423Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/32/0d3ef95647e96eee86c814db212d22a7b3c76f0f8eefc535aa9b6c8b384b/kumo_relational_engine-1.0.2-cp311-cp311-win_amd64.whl", hash = "sha256:ed940b359e45f90caf05838395968e16acf6c3a8660c79f44f40506f9f1d45e5", size = 1584453, upload-time = "2026-09-23T16:28:25.172Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/81/a1a18b3bfea97befc97b6cad6fcc4fae22dfd2099620000220b4e7acfb93/kumo_relational_engine-1.0.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:3cccaf3d6beeeec7caebeb03008c2a34c5a7b7de252726c8cb3a36852dab2c82", size = 1375731, upload-time = "2026-09-23T16:28:27.3Z" },
+    { url = "https://files.pythonhosted.org/packages/06/06/aac3c21fee96e9a8cca1b8e8ae770d24d2aaaafc1fb65fbe7953562d3da2/kumo_relational_engine-1.0.2-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:02f34109411b433c3bc09656dc34fb697e1b790a148615cf67ad24f15994a9c0", size = 1384444, upload-time = "2026-09-23T16:28:28.777Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/15/69230ea1e4b83410514ebc70fad9585be64caae647349ae6b27771be8e72/kumo_relational_engine-1.0.2-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d15fd8d89bdd6acd593919e282ce02d7968b25b9d2532a0d0d229f413b85217a", size = 1386059, upload-time = "2026-09-23T16:28:30.575Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/e6/236efcb0e2c02aff4259d1ab656d1cca9dd2a8210ca279564f1b8dc6ff36/kumo_relational_engine-1.0.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1cd6a3b65f44716b97abf6d460df9ef8d806dcf6631b29550b7e0f424970a5ef", size = 1401916, upload-time = "2026-09-23T16:28:32.133Z" },
+    { url = "https://files.pythonhosted.org/packages/78/19/d02b95aba954b274f03dcd24527d000f214cc7f9245b9deef13028e5a9c2/kumo_relational_engine-1.0.2-cp312-cp312-win_amd64.whl", hash = "sha256:44f7cbce3a16ab53b2aa176d7f8a212f89f6004aee42f162d0ac50e2d3f07972", size = 1588178, upload-time = "2026-09-23T16:28:33.931Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/61/4ba0cf02cbdb0f0eb28b1e3ec8ce72401fdf0e3da874be67e3f5a39617f2/kumo_relational_engine-1.0.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:da403c07542b586876a67cf3e85c4beeb6e2fdbde7fb2ba05f683b3b87e1b3e2", size = 1375760, upload-time = "2026-09-23T16:28:35.734Z" },
+    { url = "https://files.pythonhosted.org/packages/86/b9/68b6b9f7da97248a01f73a55f26f0bbb6e149caf6fcdc940fc31fd57f7f5/kumo_relational_engine-1.0.2-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:3cfc1f1f7c19745384ded0373d9a7d07378198d44e9c0fbf2be928b9b703da2a", size = 1384474, upload-time = "2026-09-23T16:28:38.045Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/a7/338480096e57f7c3f8b859b376c12882b9583ed76b4b5d12ef16f5cb235f/kumo_relational_engine-1.0.2-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e09f250d83a613ae35cfba80baf7f78a8a7b71134b7daeb75d9911653313c90a", size = 1386078, upload-time = "2026-09-23T16:28:39.87Z" },
+    { url = "https://files.pythonhosted.org/packages/87/f7/e2982dcb41b52bb911fba8407b5b6f42647dc0fe6d79124d9c3b3792f380/kumo_relational_engine-1.0.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5e787ce5e7742c1247381bca182a8369c4f275d058a9c93ac4230c8a9758f3d0", size = 1402005, upload-time = "2026-09-23T16:28:41.648Z" },
+    { url = "https://files.pythonhosted.org/packages/82/f0/500a4e7ec0b12fd532ad0d540a9cf4e9fc280b8ca8ca92eea97725c030f7/kumo_relational_engine-1.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:a1d358bba4b97087b30b9ef28b1eeae254377d48a27093f93187f5508915043c", size = 1588206, upload-time = "2026-09-23T16:28:43.24Z" },
 ]
 
 [[package]]
@@ -1419,6 +1506,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-dotenv"
+version = "1.2.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/26/2fbeedb218a787a5eea551c7532cac4e009f83d689dd2faa0d0353473f86/python_dotenv-1.2.4.tar.gz", hash = "sha256:f0d53e69935a851c0dcc78f3ab7aaccd8cabef0b92382b576b824212902873c0", size = 60824, upload-time = "2026-10-01T05:36:10Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/60/d1/38f3a3405989a89ac18390803e70c6ad7c7760da4f9b83cbeca0c44a0c72/python_dotenv-1.2.4-py3-none-any.whl", hash = "sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc", size = 23266, upload-time = "2026-10-01T05:36:08.633Z" },
+]
+
+[[package]]
 name = "requests"
 version = "2.34.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1453,6 +1549,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "tabulate"
+version = "0.10.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/58/8c37dea7bbf769b20d58e7ace7e5edfe65b849442b00ffcdd56be88697c6/tabulate-0.10.0.tar.gz", hash = "sha256:e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d", size = 91754, upload-time = "2026-03-04T18:55:34.402Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/55/db07de81b5c630da5cbf5c7df646580ca26dfaefa593667fc6f2fe016d2e/tabulate-0.10.0-py3-none-any.whl", hash = "sha256:f0b0622e567335c8fabaaa659f1b33bcb6ddfe2e496071b743aa113f8774f2d3", size = 39814, upload-time = "2026-03-04T18:55:31.284Z" },
 ]
 
 [[package]]

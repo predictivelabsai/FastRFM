@@ -71,7 +71,7 @@ def format_report(report: dict) -> str:
     lines.append(
         f"{flat_line} "
         "rfm retrieves labeled neighborhoods and does not fit task weights. "
-        "kumo is hosted KumoRFM and runs only when KUMO_API_KEY is set."
+        "kumo is hosted NVIDIA Kumo Relational (ex-KumoRFM) and runs only when KUMO_API_KEY is set."
     )
     return "\n".join(lines).rstrip() + "\n"
 

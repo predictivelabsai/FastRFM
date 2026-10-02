@@ -10,7 +10,7 @@ def test_keys_and_sources(capsys):
     assert main(["keys"]) == 0
     text = capsys.readouterr().out
     assert "KUMO_API_KEY" in text
-    assert "kumorfm.ai" in text
+    assert "build.nvidia.com" in text
     assert main(["sources"]) == 0
     text = capsys.readouterr().out
     assert "rel-f1" in text

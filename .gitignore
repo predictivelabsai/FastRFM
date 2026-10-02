@@ -11,3 +11,4 @@ out/
 data/
 .DS_Store
 .sesskey
+.env

@@ -1,0 +1,173 @@
+{
+  "source": "synthetic",
+  "seed": 0,
+  "context_size": 64,
+  "anchors": {
+    "train": "2023-12-27T00:00:00",
+    "val": "2024-03-26T00:00:00",
+    "test": "2024-06-24T00:00:00"
+  },
+  "models": {
+    "flat": "logistic or ridge on recency, frequency, and monetary value. Every training label is used. No foreign-key joins.",
+    "rfm": "in-context retrieval over neighborhood features (tickets, refunds, devices, constructors). A capped set of labeled rows, no fitted weights. Not Kumo's network.",
+    "kumo": "hosted NVIDIA Kumo Relational (ex-KumoRFM) on the NVIDIA API Catalog; legacy kumoai SDK for non-nvapi keys. Needs KUMO_API_KEY. Weights stay on NVIDIA's side."
+  },
+  "tasks": {
+    "churn": {
+      "question": "Will this customer place no order in the next 90 days?",
+      "metric": "auroc",
+      "kind": "binary",
+      "n_train": 400,
+      "n_test": 400,
+      "positive_rate": 0.37,
+      "models": {
+        "flat": {
+          "status": "ok",
+          "auroc": 0.5151,
+          "n_labels": 400
+        },
+        "rfm": {
+          "status": "ok",
+          "auroc": 0.9202,
+          "n_labels": 64
+        },
+        "kumo": {
+          "status": "ok",
+          "auroc": 0.879,
+          "calls": 1,
+          "query": "PREDICT COUNT(orders.*, 0, 90, days)=0 FOR EACH customers.customer_id",
+          "n_scored": 400,
+          "n_requested": 400,
+          "columns": [
+            "ENTITY",
+            "TRUE_PROB"
+          ]
+        }
+      },
+      "story": {
+        "entity_id": 72,
+        "anchor": "2024-06-24T00:00:00",
+        "label": 1,
+        "flat_score": 0.0736,
+        "rfm_score": 0.5782,
+        "snapshot": {
+          "recency_days": 8.0,
+          "frequency_365": 7.0,
+          "monetary_365": 223.891,
+          "tenure_days": 530.0,
+          "tickets_21": 3.0,
+          "severity_21": 15.0,
+          "refund_rate_60": 0.4,
+          "days_since_severe": 8.0,
+          "meal_tickets_120": 0.0,
+          "region": 0.0
+        },
+        "reading": "Last order 8 days ago, 7 orders and $224 in the past year. Flat, which only sees those three numbers, says P(churn)=0.07. There are 3 severe account tickets in the last 21 days (severity sum 15) and a 40% refund rate over 60 days. The relational model says P(churn)=0.58. They placed no order in the next 90 days."
+      }
+    },
+    "ltv": {
+      "question": "What net spend will this customer generate over the next 180 days?",
+      "metric": "mae",
+      "kind": "regression",
+      "n_train": 400,
+      "n_test": 400,
+      "positive_rate": null,
+      "models": {
+        "flat": {
+          "status": "ok",
+          "mae": 199.7387,
+          "n_labels": 400
+        },
+        "rfm": {
+          "status": "ok",
+          "mae": 136.655,
+          "n_labels": 64
+        },
+        "kumo": {
+          "status": "ok",
+          "mae": 136.3326,
+          "calls": 1,
+          "query": "PREDICT SUM(orders.net_amount, 0, 180, days) FOR EACH customers.customer_id",
+          "n_scored": 400,
+          "n_requested": 400,
+          "columns": [
+            "ENTITY",
+            "PREDICTION"
+          ]
+        }
+      }
+    },
+    "notify": {
+      "question": "Which restaurant does this customer order from next, within 30 days?",
+      "metric": "hit@1",
+      "kind": "ranking",
+      "n_train": 248,
+      "n_test": 252,
+      "positive_rate": null,
+      "models": {
+        "flat": {
+          "status": "ok",
+          "hit@1": 0.6151,
+          "n_labels": 248
+        },
+        "rfm": {
+          "status": "ok",
+          "hit@1": 0.8294,
+          "n_labels": 64
+        },
+        "kumo": {
+          "status": "ok",
+          "hit@1": 0.6468,
+          "calls": 1,
+          "query": "PREDICT LIST_DISTINCT(orders.restaurant_id, 0, 30, days) RANK TOP 1 FOR EACH customers.customer_id",
+          "n_scored": 252,
+          "n_requested": 252,
+          "columns": [
+            "ENTITY",
+            "CLASS"
+          ]
+        }
+      }
+    },
+    "fraud": {
+      "question": "Is this payment fraud, given the account, the device, and earlier payments?",
+      "metric": "auroc",
+      "kind": "binary",
+      "n_train": 5277,
+      "n_test": 1260,
+      "positive_rate": 0.15,
+      "models": {
+        "flat": {
+          "status": "ok",
+          "auroc": 0.5256,
+          "n_labels": 5277
+        },
+        "rfm": {
+          "status": "ok",
+          "auroc": 0.9414,
+          "n_labels": 64
+        },
+        "kumo": {
+          "status": "ok",
+          "auroc": 0.585,
+          "calls": 8,
+          "query": "PREDICT payments.is_fraud FOR payments.payment_id IN (109, 311, 1582, 2433, 4415, 7020, 7405, 7475, 7992, 8511, 9048, 9615, 10670, 10743, 10936, 11718, 12396, 13375, 13451)",
+          "n_scored": 164,
+          "n_requested": 1260,
+          "columns": [
+            "ENTITY",
+            "TRUE_PROB"
+          ]
+        }
+      },
+      "story": {
+        "entity_id": 9226,
+        "anchor": "2024-08-02T12:00:00",
+        "label": 1,
+        "flat_score": 0.4233,
+        "rfm_score": 0.8577,
+        "reading": "payment 9226: flat P(fraud)=0.42 from the customer's own history, rfm P(fraud)=0.86 after looking at other payments on the same device. The payment was fraud."
+      }
+    }
+  }
+}

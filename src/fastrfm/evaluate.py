@@ -23,7 +23,7 @@ from .warehouse import Warehouse
 MODEL_NOTES = {
     "flat": "logistic or ridge on recency, frequency, and monetary value. Every training label is used. No foreign-key joins.",
     "rfm": "in-context retrieval over neighborhood features (tickets, refunds, devices, constructors). A capped set of labeled rows, no fitted weights. Not Kumo's network.",
-    "kumo": "hosted KumoRFM via the kumoai SDK. Needs KUMO_API_KEY. Weights stay on Kumo's side.",
+    "kumo": "hosted NVIDIA Kumo Relational (ex-KumoRFM) on the NVIDIA API Catalog; legacy kumoai SDK for non-nvapi keys. Needs KUMO_API_KEY. Weights stay on NVIDIA's side.",
 }
 
 

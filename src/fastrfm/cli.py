@@ -25,7 +25,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Evaluate relational prediction. flat is a recency/frequency/monetary "
             "baseline. rfm is a local in-context model over the foreign-key graph. "
-            "kumo calls hosted KumoRFM when KUMO_API_KEY is set."
+            "kumo calls hosted NVIDIA Kumo Relational (ex-KumoRFM) when KUMO_API_KEY is set."
         ),
     )
     parser.add_argument("--version", action="version", version=f"fastrfm {__version__}")
@@ -89,10 +89,13 @@ def _add_eval_args(parser: argparse.ArgumentParser) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from .nvidia import load_env
+
+    load_env()
     args = _build_parser().parse_args(argv)
     if args.cmd == "keys":
         print(json.dumps(key_status(), indent=2))
-        print(f"\nFree KumoRFM key: {SIGNUP_URL}")
+        print(f"\nNVIDIA API key for Kumo Relational: {SIGNUP_URL}")
         print("Open data and the local models need no key.")
         return 0
     if args.cmd == "sources":
@@ -225,7 +228,7 @@ def _sources_text() -> str:
             "  the Hub parquet includes test labels; those are what `eval` scores",
             "",
             "kumo model  KUMO_API_KEY",
-            f"  hosted KumoRFM, free key at {SIGNUP_URL}, 1000 queries/day",
+            f"  hosted NVIDIA Kumo Relational (ex-KumoRFM), NVIDIA API key from {SIGNUP_URL}",
             "  weights are not downloaded",
             "",
             "OpenRFM (arXiv:2606.04320) and RDB-PFN (github.com/MuLabPKU/RDBPFN)",

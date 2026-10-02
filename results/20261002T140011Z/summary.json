@@ -1,0 +1,56 @@
+{
+  "endpoint": "https://ai.api.nvidia.com/v1/structured-data/nvidia/kumo-relational/predictions",
+  "auth": "Authorization: Bearer <NVIDIA API key>",
+  "model": "nvidia/kumo-relational",
+  "run_utc": "20261002T140012Z",
+  "dataset": {
+    "source": "fastrfm synthetic warehouse",
+    "seed": 0,
+    "rows": {
+      "customers": 400,
+      "restaurants": 12,
+      "devices": 40,
+      "orders": 14737,
+      "payments": 14737,
+      "tickets": 3733
+    },
+    "anchor": "2024-06-24T00:00:00"
+  },
+  "tasks": {
+    "churn": {
+      "kind": "binary_classification",
+      "query": "PREDICT COUNT(orders.*, 0, 90, days)=0 FOR EACH customers.customer_id",
+      "n": 400,
+      "positive_rate": 0.37,
+      "auroc": 0.879,
+      "mean_p_churn": 0.4016,
+      "latency_s": 15.43
+    },
+    "ltv": {
+      "kind": "regression",
+      "query": "PREDICT SUM(orders.net_amount, 0, 180, days) FOR EACH customers.customer_id",
+      "n": 400,
+      "mae": 136.33,
+      "mae_constant_mean_baseline": 144.33,
+      "mean_actual": 282.54,
+      "mean_predicted": 261.02,
+      "latency_s": 40.84
+    },
+    "notify": {
+      "kind": "ranking (temporal link prediction)",
+      "query": "PREDICT LIST_DISTINCT(orders.restaurant_id, 0, 30, days) RANK TOP 1 FOR EACH customers.customer_id",
+      "n": 252,
+      "hit_at_1": 0.6468,
+      "latency_s": 30.16
+    },
+    "forecast": {
+      "kind": "forecasting",
+      "query": "PREDICT SUM(orders.net_amount, 0, 30, days) FORECAST 3 TIMEFRAMES FOR customers.customer_id=<id>",
+      "entities": 5,
+      "mae": 27.59,
+      "mean_actual": 73.25,
+      "mean_predicted": 97.39,
+      "latency_s_per_entity": 2.12
+    }
+  }
+}

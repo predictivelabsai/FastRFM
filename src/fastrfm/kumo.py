@@ -1,8 +1,10 @@
-"""Hosted KumoRFM. Optional: nothing in this module runs without a key.
+"""Hosted KumoRFM / NVIDIA Kumo Relational. Nothing here runs without a key.
 
-KumoRFM weights are not on Hugging Face. The SDK (``pip install kumoai``)
-sends the graph and a Predictive Query Language string to Kumo, which holds
-the model. A free key from https://kumorfm.ai is capped at 1000 queries/day.
+KumoRFM weights are not on Hugging Face. Since 2026 the hosted model is NVIDIA
+Kumo Relational on the NVIDIA API Catalog. With an ``nvapi-`` key in
+``KUMO_API_KEY`` the call goes through :mod:`fastrfm.nvidia` (NVIDIA's
+``kumo-relational-engine`` builds the request, Bearer auth to the catalog).
+Any other key falls back to the legacy ``kumoai`` SDK (``rfm.init()``).
 
 The graph passed to Kumo is truncated to rows before the anchor, so the
 service's default anchor (the latest timestamp it was given) is our cutoff.
@@ -19,7 +21,7 @@ import pandas as pd
 
 from .warehouse import as_day
 
-SIGNUP_URL = "https://kumorfm.ai"
+SIGNUP_URL = "https://build.nvidia.com/nvidia/kumo-relational"
 KEY_ENV = "KUMO_API_KEY"
 
 # Time columns used to enforce the cutoff. Tables absent from this map are
@@ -46,19 +48,32 @@ class KumoSkip(Exception):
         self.reason = reason
 
 
+def _backend() -> str:
+    from . import nvidia
+
+    key = nvidia.api_key()
+    if not key:
+        return "none"
+    return "nvidia" if nvidia.is_nvidia_key(key) else "kumoai"
+
+
 def key_status() -> dict[str, str]:
-    present = bool(os.environ.get(KEY_ENV))
+    backend = _backend()
     return {
         "env": KEY_ENV,
-        "state": "set" if present else "missing",
+        "state": "missing" if backend == "none" else "set",
+        "backend": {"nvidia": "NVIDIA API Catalog (kumo-relational, Bearer)",
+                    "kumoai": "legacy kumoai SDK (kumorfm.ai)", "none": "-"}[backend],
         "required_for": "the kumo model only",
         "signup": SIGNUP_URL,
-        "daily_limit": "1000 queries/day on the free key",
-        "weights": "hosted by Kumo, not downloaded",
+        "weights": "hosted by NVIDIA, not downloaded",
     }
 
 
 def _load_sdk():
+    from . import nvidia
+
+    nvidia.load_env()
     if not os.environ.get(KEY_ENV):
         raise KumoSkip(
             f"{KEY_ENV} is not set. A free key is issued at {SIGNUP_URL} "
@@ -123,8 +138,36 @@ def pql(task: str, entity_ids: list[int] | None = None) -> str:
     return queries[task]
 
 
-def run_query(tables: dict[str, pd.DataFrame], query: str) -> pd.DataFrame:
-    """Execute one PQL query. Tests monkeypatch this."""
+def run_query(
+    tables: dict[str, pd.DataFrame],
+    query: str,
+    indices: list[int] | None = None,
+    anchor_time: pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    """Execute one PQL query. Tests monkeypatch this.
+
+    ``indices`` and ``anchor_time`` are used by the NVIDIA backend, which needs
+    explicit entity ids for ``FOR EACH`` queries.
+    """
+    if _backend() == "nvidia":
+        from . import nvidia
+
+        kwargs: dict[str, Any] = {}
+        if indices is not None:
+            kwargs["indices"] = [int(i) for i in indices]
+        if anchor_time is not None:
+            kwargs["anchor_time"] = pd.Timestamp(anchor_time)
+        try:
+            frame = nvidia.KumoRelational(tables).predict(query, **kwargs).frame
+        except ImportError as exc:
+            raise KumoSkip("kumo-relational-client[relational] is not installed") from exc
+        # Normalize CLASS/SCORE outputs to one number per entity.
+        collapsed = nvidia.positive_scores(frame)
+        if collapsed is None:
+            collapsed = nvidia.top_class(frame)
+            if collapsed is not None:
+                collapsed = collapsed[["ENTITY", "CLASS"]]
+        return frame if collapsed is None else collapsed
     rfm = _load_sdk()
     rfm.init()
     if hasattr(rfm, "LocalGraph"):
@@ -144,7 +187,21 @@ def run_query(tables: dict[str, pd.DataFrame], query: str) -> pd.DataFrame:
     raise KumoSkip(f"Kumo returned {type(result).__name__}, not a table of predictions")
 
 
+def _call(graph, query, ids, anchor):
+    """``run_query`` with ids/anchor when it accepts them (tests patch a 2-arg version)."""
+    import inspect
+
+    try:
+        params = inspect.signature(run_query).parameters
+    except (TypeError, ValueError):
+        params = {}
+    if "indices" in params:
+        return run_query(graph, query, ids, anchor)
+    return run_query(graph, query)
+
+
 _SCORE_HINTS = (
+    "class",  # top-1 class from a ranking, after nvidia.top_class
     "true_prob",
     "prob_true",
     "probability",
@@ -295,7 +352,7 @@ def predict_task(
         # FOR EACH queries ignore the id list; IN queries need it.
         query = pql(task, ids if task not in ("churn", "ltv", "notify") else None)
         query_text = query
-        frame = run_query(graph, query)
+        frame = _call(graph, query, ids, pd.Timestamp(anchor))
         calls += 1
         part, entity_col, score_col = scores_from_frame(frame, entity_ids[member])
         scores[member] = part
@@ -339,9 +396,12 @@ def _predict_fraud(
         anchor = pd.Timestamp(anchors.iloc[int(member[0])]) + pd.Timedelta(days=1)
         graph = truncate(tables, anchor)
         graph["payments"] = mask_fraud_labels(graph["payments"], ids)
+        if _backend() == "nvidia":
+            # Nullable bool, so the hosted model sees a binary target, not 0.0/1.0 classes.
+            graph["payments"]["is_fraud"] = graph["payments"]["is_fraud"].astype("boolean")
         query = pql("fraud", ids)
         query_text = query
-        frame = run_query(graph, query)
+        frame = _call(graph, query, ids, None)
         calls += 1
         part, entity_col, score_col = scores_from_frame(frame, entity_ids[member])
         scores[member] = part

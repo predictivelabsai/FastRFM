@@ -8,9 +8,12 @@ requires-python = ">=3.11"
 authors = [{ name = "Predictive Labs AI" }]
 keywords = ["relational-foundation-model", "kumo", "relbench", "rfm"]
 dependencies = [
+  "kumo-relational-client[relational]>=1.0.2",
   "numpy>=1.26",
   "pandas>=2.1",
   "pyarrow>=14",
+  "python-dotenv>=1.2.4",
+  "requests>=2.34.2",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,112 @@
+{
+  "source": "rel-f1",
+  "path": "data/rel-f1",
+  "license": "CC BY-SA 4.0",
+  "context_size": 64,
+  "models": {
+    "flat": "logistic or ridge on recency, frequency, and monetary value. Every training label is used. No foreign-key joins.",
+    "rfm": "in-context retrieval over neighborhood features (tickets, refunds, devices, constructors). A capped set of labeled rows, no fitted weights. Not Kumo's network.",
+    "kumo": "hosted NVIDIA Kumo Relational (ex-KumoRFM) on the NVIDIA API Catalog; legacy kumoai SDK for non-nvapi keys. Needs KUMO_API_KEY. Weights stay on NVIDIA's side."
+  },
+  "tasks": {
+    "driver-dnf": {
+      "question": "Predict the if each driver will DNF (not finish) a race in the next 1 month.",
+      "metric": "auroc",
+      "kind": "binary",
+      "scored_split": "test",
+      "n_train": 11411,
+      "n_test": 702,
+      "positive_rate": 0.7051,
+      "models": {
+        "flat": {
+          "status": "ok",
+          "auroc": 0.819,
+          "n_labels": 11411
+        },
+        "rfm": {
+          "status": "ok",
+          "auroc": 0.8224,
+          "n_labels": 64
+        },
+        "kumo": {
+          "status": "ok",
+          "auroc": 0.8236,
+          "calls": 29,
+          "query": "PREDICT MAX(results.statusId, 0, 30, days)>1 FOR drivers.driverId IN (0, 2, 3, 7, 12, 15, 16, 17, 19, 153, 807, 812, 813, 814, 816, 817, 818, 819, 820, 821, 822, 823)",
+          "n_scored": 702,
+          "n_requested": 702,
+          "columns": [
+            "ENTITY",
+            "TRUE_PROB"
+          ]
+        }
+      }
+    },
+    "driver-top3": {
+      "question": "Predict if each driver will qualify in the top-3 for a race within the next 1 month.",
+      "metric": "auroc",
+      "kind": "binary",
+      "scored_split": "test",
+      "n_train": 1353,
+      "n_test": 726,
+      "positive_rate": 0.1763,
+      "models": {
+        "flat": {
+          "status": "ok",
+          "auroc": 0.9068,
+          "n_labels": 1353
+        },
+        "rfm": {
+          "status": "ok",
+          "auroc": 0.9073,
+          "n_labels": 64
+        },
+        "kumo": {
+          "status": "ok",
+          "auroc": 0.9159,
+          "calls": 30,
+          "query": "PREDICT MIN(qualifying.position, 0, 30, days)<=3 FOR drivers.driverId IN (0, 2, 3, 7, 12, 15, 16, 17, 19, 153, 807, 812, 813, 814, 816, 817, 818, 819, 820, 821, 822, 823)",
+          "n_scored": 726,
+          "n_requested": 726,
+          "columns": [
+            "ENTITY",
+            "TRUE_PROB"
+          ]
+        }
+      }
+    },
+    "driver-position": {
+      "question": "Predict the average finishing position of each driver all races in the next 2 months.",
+      "metric": "mae",
+      "kind": "regression",
+      "scored_split": "test",
+      "n_train": 7453,
+      "n_test": 760,
+      "positive_rate": null,
+      "models": {
+        "flat": {
+          "status": "ok",
+          "mae": 4.0393,
+          "n_labels": 7453
+        },
+        "rfm": {
+          "status": "ok",
+          "mae": 3.0003,
+          "n_labels": 64
+        },
+        "kumo": {
+          "status": "ok",
+          "mae": 2.6835,
+          "calls": 33,
+          "query": "PREDICT AVG(results.positionOrder, 0, 60, days) FOR drivers.driverId IN (0, 2, 3, 7, 12, 17, 19, 153, 807, 814, 816, 820, 821, 824, 825, 827, 829, 830, 831, 834, 835, 836)",
+          "n_scored": 760,
+          "n_requested": 760,
+          "columns": [
+            "ENTITY",
+            "PREDICTION"
+          ]
+        }
+      }
+    }
+  }
+}
