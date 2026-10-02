@@ -1,0 +1,35 @@
+[project]
+name = "fastrfm"
+version = "0.1.0"
+description = "Command-line tools to evaluate relational prediction: a flattened recency/frequency/monetary baseline, a local in-context relational model, and hosted KumoRFM."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Predictive Labs AI" }]
+keywords = ["relational-foundation-model", "kumo", "relbench", "rfm"]
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "pyarrow>=14",
+]
+
+[project.optional-dependencies]
+kumo = ["kumoai>=2.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+fastrfm = "fastrfm.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fastrfm"]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
